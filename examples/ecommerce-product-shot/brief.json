@@ -1,0 +1,11 @@
+{
+  "brief_id": "phase0-ecomm-bottle",
+  "prompt": "Create a clean e-commerce product shot of a stainless steel water bottle centered on a pure white background. The bottle should be fully visible, uncropped, front-facing, and premium-looking. No text, logos, hands, props, or shadows.",
+  "vertical": "ecommerce_product_shot",
+  "required_text": [],
+  "constraints": {
+    "aspect_ratio": "1:1",
+    "background": "white",
+    "style": "product photography"
+  }
+}

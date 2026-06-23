@@ -1,0 +1,13 @@
+phase0:
+  default_provider: gmicloud
+  providers:
+    gmicloud:
+      enabled: true
+      model: flux-1.1-pro
+      api_key_env: GMICLOUD_API_KEY
+      fallback_only: false
+    replicate:
+      enabled: false
+      model: black-forest-labs/flux-schnell
+      api_key_env: REPLICATE_API_TOKEN
+      fallback_only: false

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crucible"
+version = "0.1.0"
+description = "Phase 0 spine for Crucible: Genblaze generation, B2 storage, and manifest verification."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "boto3>=1.34",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.2",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+genblaze-gmicloud = [
+  "genblaze-core",
+  "genblaze-s3",
+  "genblaze-gmicloud",
+]
+
+[tool.setuptools.packages.find]
+where = ["packages/crucible-core/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/crucible-core/tests"]
+pythonpath = ["packages/crucible-core/src"]
+addopts = "-q --basetemp=tmp/pytest -p no:cacheprovider"

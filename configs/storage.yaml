@@ -1,0 +1,9 @@
+phase0:
+  provider: backblaze_b2
+  bucket_env: B2_BUCKET_NAME
+  endpoint_url_env: B2_ENDPOINT_URL
+  key_prefix: runs/local
+  object_lock:
+    enabled_env: B2_OBJECT_LOCK_ENABLED
+    mode_env: B2_OBJECT_LOCK_MODE
+    retention_days_env: B2_OBJECT_LOCK_RETENTION_DAYS
