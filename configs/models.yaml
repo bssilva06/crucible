@@ -3,7 +3,7 @@ phase0:
   providers:
     gmicloud:
       enabled: true
-      model: flux-1.1-pro
+      model: seedream-5.0-lite
       api_key_env: GMICLOUD_API_KEY
       fallback_only: false
     replicate:

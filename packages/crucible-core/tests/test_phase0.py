@@ -22,13 +22,40 @@ def test_object_key_uses_phase0_layout() -> None:
 
 
 def test_require_b2_reports_missing_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ["B2_APPLICATION_KEY_ID", "B2_APPLICATION_KEY", "B2_BUCKET_NAME", "B2_ENDPOINT_URL"]:
+    for name in [
+        "B2_APPLICATION_KEY_ID",
+        "B2_KEY_ID",
+        "B2_APPLICATION_KEY",
+        "B2_APP_KEY",
+        "B2_APPLICATION_KEY_VALUE",
+        "B2_SECRET_KEY",
+        "B2_SECRET_ACCESS_KEY",
+        "AWS_SECRET_ACCESS_KEY",
+        "B2_BUCKET_NAME",
+        "B2_ENDPOINT_URL",
+    ]:
         monkeypatch.delenv(name, raising=False)
 
     settings = Phase0Settings.from_env()
 
     with pytest.raises(ConfigError, match="Missing required B2 environment variables"):
         settings.require_b2()
+
+
+def test_env_aliases_for_b2_and_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("B2_APPLICATION_KEY_ID", raising=False)
+    monkeypatch.delenv("B2_APPLICATION_KEY", raising=False)
+    monkeypatch.setenv("B2_KEY_ID", "key-id")
+    monkeypatch.setenv("B2_APP_KEY", "app-key")
+    monkeypatch.setenv("B2_BUCKET_NAME", "bucket")
+    monkeypatch.setenv("B2_ENDPOINT_URL", "https://example.invalid")
+    monkeypatch.setenv("GMI_API_KEY", "gmi-key")
+
+    settings = Phase0Settings.from_env()
+
+    assert settings.b2_application_key_id == "key-id"
+    assert settings.b2_application_key == "app-key"
+    assert settings.require_provider_key("GMICLOUD_API_KEY") == "gmi-key"
 
 
 def test_load_dotenv_sets_missing_values_without_overriding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -20,9 +20,9 @@ dev = [
   "pytest>=8.0",
 ]
 genblaze-gmicloud = [
-  "genblaze-core",
-  "genblaze-s3",
+  "genblaze",
   "genblaze-gmicloud",
+  "genblaze-replicate",
 ]
 
 [tool.setuptools.packages.find]

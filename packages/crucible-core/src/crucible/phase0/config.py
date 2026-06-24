@@ -30,8 +30,15 @@ class Phase0Settings:
             env=os.getenv("CRUCIBLE_ENV", "local"),
             log_level=os.getenv("CRUCIBLE_LOG_LEVEL", "INFO"),
             provider=os.getenv("CRUCIBLE_PHASE0_PROVIDER", "gmicloud"),
-            b2_application_key_id=os.getenv("B2_APPLICATION_KEY_ID"),
-            b2_application_key=os.getenv("B2_APPLICATION_KEY"),
+            b2_application_key_id=env_any("B2_APPLICATION_KEY_ID", "B2_KEY_ID"),
+            b2_application_key=env_any(
+                "B2_APPLICATION_KEY",
+                "B2_APP_KEY",
+                "B2_APPLICATION_KEY_VALUE",
+                "B2_SECRET_KEY",
+                "B2_SECRET_ACCESS_KEY",
+                "AWS_SECRET_ACCESS_KEY",
+            ),
             b2_bucket_name=os.getenv("B2_BUCKET_NAME"),
             b2_bucket_region=os.getenv("B2_BUCKET_REGION"),
             b2_endpoint_url=os.getenv("B2_ENDPOINT_URL"),
@@ -45,7 +52,7 @@ class Phase0Settings:
             name
             for name, value in {
                 "B2_APPLICATION_KEY_ID": self.b2_application_key_id,
-                "B2_APPLICATION_KEY": self.b2_application_key,
+                "B2_APPLICATION_KEY/B2_APP_KEY": self.b2_application_key,
                 "B2_BUCKET_NAME": self.b2_bucket_name,
                 "B2_ENDPOINT_URL": self.b2_endpoint_url,
             }.items()
@@ -55,9 +62,10 @@ class Phase0Settings:
             raise ConfigError(f"Missing required B2 environment variables: {', '.join(missing)}")
 
     def require_provider_key(self, env_name: str) -> str:
-        value = os.getenv(env_name)
+        value = env_any(env_name, *_provider_key_aliases(env_name))
         if not value:
-            raise ConfigError(f"Missing required provider environment variable: {env_name}")
+            names = ", ".join((env_name, *_provider_key_aliases(env_name)))
+            raise ConfigError(f"Missing required provider environment variable. Checked: {names}")
         return value
 
 
@@ -90,3 +98,21 @@ def _env_bool(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_any(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+    return None
+
+
+def _provider_key_aliases(env_name: str) -> tuple[str, ...]:
+    aliases = {
+        "GMICLOUD_API_KEY": ("GMI_API_KEY",),
+        "GMI_API_KEY": ("GMICLOUD_API_KEY",),
+        "REPLICATE_API_TOKEN": ("REPLICATE_API_KEY",),
+        "REPLICATE_API_KEY": ("REPLICATE_API_TOKEN",),
+    }
+    return aliases.get(env_name, ())
