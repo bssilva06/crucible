@@ -45,6 +45,8 @@ def test_require_b2_reports_missing_env(monkeypatch: pytest.MonkeyPatch) -> None
 def test_env_aliases_for_b2_and_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("B2_APPLICATION_KEY_ID", raising=False)
     monkeypatch.delenv("B2_APPLICATION_KEY", raising=False)
+    monkeypatch.delenv("GMICLOUD_API_KEY", raising=False)
+    monkeypatch.delenv("GMI_API_KEY", raising=False)
     monkeypatch.setenv("B2_KEY_ID", "key-id")
     monkeypatch.setenv("B2_APP_KEY", "app-key")
     monkeypatch.setenv("B2_BUCKET_NAME", "bucket")

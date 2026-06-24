@@ -104,3 +104,42 @@ Live tests are opt-in:
 $env:CRUCIBLE_RUN_LIVE_PROVIDER_TESTS="true"
 pytest
 ```
+
+## Phase 0.5 Local API
+
+```powershell
+python -m uvicorn crucible_api.main:app --app-dir apps/api/src --reload
+```
+
+Useful endpoints:
+
+- `GET http://localhost:8000/health`
+- `POST http://localhost:8000/runs`
+- `GET http://localhost:8000/runs/{run_id}`
+- `GET http://localhost:8000/runs/{run_id}/asset`
+
+Dry-run request:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/runs -ContentType "application/json" -Body '{"prompt":"Centered product bottle on white background","dry_run":true}'
+```
+
+## Phase 0.5 Local Web App
+
+```powershell
+cd apps/web
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+The frontend uses `NEXT_PUBLIC_API_BASE_URL` and must never receive provider or B2 secrets.
+
+## Deployment Targets
+
+- Backend: Modal, using `infra/modal/app.py`
+- Frontend: Vercel, with `apps/web` as the project root
+- Storage: Backblaze B2
+
+Modal should hold all provider and B2 secrets. Vercel should only receive `NEXT_PUBLIC_API_BASE_URL`.
