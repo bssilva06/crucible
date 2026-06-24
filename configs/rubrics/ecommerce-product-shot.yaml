@@ -1,0 +1,37 @@
+criteria:
+  - id: file_integrity
+    description: Asset bytes decode as an image.
+    type: file_integrity
+    weight: 1.0
+    hard_gate: true
+    evaluator: deterministic
+
+  - id: minimum_resolution
+    description: Image is at least 512x512 pixels.
+    type: resolution
+    weight: 1.0
+    hard_gate: true
+    evaluator: deterministic
+    expected:
+      min_width: 512
+      min_height: 512
+
+  - id: aspect_ratio
+    description: Image aspect ratio is square.
+    type: aspect_ratio
+    weight: 1.0
+    hard_gate: true
+    evaluator: deterministic
+    expected:
+      ratio: 1.0
+      tolerance: 0.02
+
+  - id: white_background_edges
+    description: Image edges are sufficiently close to white.
+    type: pixel_background_check
+    weight: 1.0
+    hard_gate: true
+    evaluator: deterministic
+    expected:
+      edge_pass_rate: 0.95
+      rgb_tolerance: 18

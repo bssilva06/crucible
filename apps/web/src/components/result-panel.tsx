@@ -41,13 +41,49 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <Meta label="Run" value={result.run_id} />
           <Meta label="Status" value={result.status} />
+          <Meta label="Evaluation" value={result.evaluation_status} />
           <Meta label="Provider" value={result.provider || ""} />
           <Meta label="Model" value={result.model || ""} />
           <Meta label="Verification" value={result.verification_status} />
+          <Meta label="Failed gates" value={result.failed_hard_gates.join(", ")} wide />
           <Meta label="SHA-256" value={result.asset_sha256 || ""} wide />
           <Meta label="Manifest" value={result.manifest_uri || ""} wide />
           {result.error ? <Meta label="Error" value={result.error} wide /> : null}
         </dl>
+      ) : null}
+
+      {result?.criterion_results.length ? (
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold">Deterministic Gates</h3>
+          <div className="overflow-hidden rounded-md border border-[var(--border)]">
+            {result.criterion_results.map((criterion) => (
+              <div
+                className="grid gap-2 border-b border-[var(--border)] bg-[#fafaf8] p-3 text-sm last:border-b-0 sm:grid-cols-[140px_80px_minmax(0,1fr)]"
+                key={criterion.criterion_id}
+              >
+                <div className="break-words font-mono text-xs">{criterion.criterion_id}</div>
+                <div>
+                  <span
+                    className={
+                      criterion.passed
+                        ? "rounded-md bg-teal-50 px-2 py-1 text-xs font-medium text-[var(--accent-strong)]"
+                        : "rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-[var(--danger)]"
+                    }
+                  >
+                    {criterion.passed ? "PASS" : "FAIL"}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm leading-5">{criterion.feedback || "No feedback"}</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    Score {criterion.score === null ? "—" : criterion.score.toFixed(3)}
+                    {criterion.hard_gate ? " · hard gate" : ""}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : null}
     </section>
   );

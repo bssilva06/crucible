@@ -5,6 +5,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from crucible.checks.deterministic import run_deterministic_checks
+from crucible.domain.evaluation import CriterionResult, EvaluationStatus, evaluation_status, failed_hard_gates
+from crucible.domain.rubric import load_rubric
 from crucible.phase0.brief import Brief
 from crucible.phase0.config import ConfigError, Phase0Settings
 from crucible.phase0.generator import GeneratedAsset
@@ -32,6 +35,9 @@ class RunResponse(BaseModel):
     manifest_uri: str | None = None
     asset_sha256: str | None = None
     verification_status: Literal["pending", "verified", "failed"] = "pending"
+    evaluation_status: EvaluationStatus = EvaluationStatus.NOT_RUN
+    criterion_results: list[CriterionResult] = Field(default_factory=list)
+    failed_hard_gates: list[str] = Field(default_factory=list)
     error: str | None = None
 
 
@@ -107,10 +113,22 @@ class RunService:
                 }
             )
             verify_manifest(storage=storage, run_id=run_id)
+            asset_bytes = storage.get_bytes(result.asset_uri)
+            rubric = load_rubric(self.settings.config_root / "rubrics" / "ecommerce-product-shot.yaml")
+            criterion_results = run_deterministic_checks(
+                asset_bytes=asset_bytes,
+                mime_type=_mime_type_for_uri(result.asset_uri),
+                asset_uri=result.asset_uri,
+                asset_sha256=result.asset_sha256,
+                rubric=rubric,
+            )
             completed = self._runs[run_id].model_copy(
                 update={
                     "status": "COMPLETED",
                     "verification_status": "verified",
+                    "evaluation_status": evaluation_status(criterion_results),
+                    "criterion_results": criterion_results,
+                    "failed_hard_gates": failed_hard_gates(criterion_results),
                 }
             )
             self._runs[run_id] = completed

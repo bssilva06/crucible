@@ -12,7 +12,7 @@ from crucible_api.settings import ApiSettings
 def _settings(tmp_path: Path) -> ApiSettings:
     return ApiSettings(
         root=tmp_path,
-        config_root=Path("configs"),
+        config_root=Path.cwd() / "configs",
         local_storage_root=tmp_path / "storage",
         cors_origins=["http://localhost:3000"],
         dry_run_default=True,
@@ -42,6 +42,9 @@ def test_create_and_fetch_dry_run(tmp_path: Path) -> None:
     created = create.json()
     assert created["status"] == "COMPLETED"
     assert created["verification_status"] == "verified"
+    assert created["evaluation_status"] == "FAILED"
+    assert created["failed_hard_gates"] == ["minimum_resolution"]
+    assert len(created["criterion_results"]) == 4
     assert created["provider"] == "dry-run"
 
     fetched = client.get(f"/runs/{created['run_id']}")
@@ -59,6 +62,23 @@ def test_asset_proxy_returns_image(tmp_path: Path) -> None:
     assert asset.status_code == 200
     assert asset.headers["content-type"].startswith("image/png")
     assert asset.content.startswith(b"\x89PNG")
+
+
+def test_dry_run_includes_deterministic_gate_results(tmp_path: Path) -> None:
+    reset_run_service_for_tests(_settings(tmp_path))
+    client = TestClient(app)
+
+    created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
+
+    criterion_ids = [result["criterion_id"] for result in created["criterion_results"]]
+    assert criterion_ids == [
+        "file_integrity",
+        "minimum_resolution",
+        "aspect_ratio",
+        "white_background_edges",
+    ]
+    assert created["criterion_results"][0]["passed"] is True
+    assert "minimum_resolution" in created["failed_hard_gates"]
 
 
 def test_rejects_long_prompt(tmp_path: Path) -> None:

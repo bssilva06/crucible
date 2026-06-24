@@ -10,7 +10,21 @@ export type RunResponse = {
   manifest_uri: string | null;
   asset_sha256: string | null;
   verification_status: "pending" | "verified" | "failed";
+  evaluation_status: "NOT_RUN" | "PASSED" | "FAILED";
+  criterion_results: CriterionResult[];
+  failed_hard_gates: string[];
   error: string | null;
+};
+
+export type CriterionResult = {
+  criterion_id: string;
+  passed: boolean;
+  score: number | null;
+  hard_gate: boolean;
+  evaluator: string;
+  feedback: string | null;
+  evidence: Record<string, unknown>;
+  evaluated_at: string;
 };
 
 export type RunCreateRequest = {

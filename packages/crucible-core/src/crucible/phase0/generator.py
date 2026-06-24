@@ -27,8 +27,8 @@ class DryRunGenerator(Generator):
     """Deterministic fake image generator for no-network smoke tests."""
 
     _ONE_BY_ONE_PNG = base64.b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/atv"
-        "pU8AAAAASUVORK5CYII="
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4"
+        "AAAAAElFTkSuQmCC"
     )
 
     def generate(self, brief: Brief) -> GeneratedAsset:
