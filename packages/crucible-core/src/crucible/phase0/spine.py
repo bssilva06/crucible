@@ -9,7 +9,7 @@ from crucible.phase0.config import Phase0Settings, phase0_provider_config
 from crucible.phase0.crypto import sha256_bytes
 from crucible.phase0.generator import DryRunGenerator, GeneratedAsset, Generator, GenblazeGenerator
 from crucible.phase0.manifest import Phase0Manifest
-from crucible.phase0.storage import B2Storage, LocalStorage, Storage, object_key
+from crucible.phase0.storage import B2Storage, LocalStorage, Storage, candidate_object_key, object_key
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,20 @@ def build_generator(*, dry_run: bool, settings: Phase0Settings, config_root: Pat
         return DryRunGenerator()
     provider_config = phase0_provider_config(config_root, settings.provider)
     return GenblazeGenerator(settings=settings, provider_config=provider_config)
+
+
+def build_generator_for_provider(
+    *,
+    dry_run: bool,
+    settings: Phase0Settings,
+    provider: str,
+    provider_config: dict[str, object],
+) -> Generator:
+    if dry_run:
+        return DryRunGenerator()
+    from dataclasses import replace
+
+    return GenblazeGenerator(settings=replace(settings, provider=provider), provider_config=provider_config)
 
 
 def build_storage(*, dry_run: bool, settings: Phase0Settings, local_root: Path) -> Storage:
@@ -69,6 +83,39 @@ def persist_generated_asset(
         genblaze=generated.genblaze_metadata,
     )
     manifest_key = object_key(run_id, "manifest.json")
+    manifest_object = storage.put_bytes(manifest_key, manifest.to_json_bytes(), "application/json")
+
+    return Phase0RunResult(
+        run_id=run_id,
+        asset_uri=asset.uri,
+        manifest_uri=manifest_object.uri,
+        asset_sha256=asset_sha256,
+    )
+
+
+def persist_generated_candidate_asset(
+    *,
+    run_id: str,
+    attempt_id: str,
+    brief: Brief,
+    generated: GeneratedAsset,
+    storage: Storage,
+) -> Phase0RunResult:
+    asset_sha256 = sha256_bytes(generated.data)
+    extension = _extension_for_mime_type(generated.mime_type)
+    asset_key = candidate_object_key(run_id, attempt_id, f"asset.{extension}")
+    asset = storage.put_bytes(asset_key, generated.data, generated.mime_type)
+
+    manifest = Phase0Manifest.create(
+        run_id=run_id,
+        brief_id=brief.brief_id,
+        provider=generated.provider,
+        model=generated.model,
+        asset_uri=asset.uri,
+        asset_sha256=asset_sha256,
+        genblaze=generated.genblaze_metadata,
+    )
+    manifest_key = candidate_object_key(run_id, attempt_id, "manifest.json")
     manifest_object = storage.put_bytes(manifest_key, manifest.to_json_bytes(), "application/json")
 
     return Phase0RunResult(

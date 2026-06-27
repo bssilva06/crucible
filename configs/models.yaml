@@ -7,7 +7,15 @@ phase0:
       api_key_env: GMICLOUD_API_KEY
       fallback_only: false
     replicate:
-      enabled: false
+      enabled: true
       model: black-forest-labs/flux-schnell
       api_key_env: REPLICATE_API_TOKEN
       fallback_only: false
+
+phase2:
+  fanout:
+    default_candidate_count: 2
+    max_candidate_count: 8
+    providers:
+      - gmicloud
+      - replicate

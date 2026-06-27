@@ -40,3 +40,15 @@ def get_asset(run_id: str) -> Response:
     except RunServiceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(content=data, media_type=mime_type)
+
+
+@router.get("/{run_id}/candidates/{attempt_id}/asset")
+def get_candidate_asset(run_id: str, attempt_id: str) -> Response:
+    service = get_run_service()
+    try:
+        data, mime_type = service.get_candidate_asset(run_id, attempt_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Candidate not found") from exc
+    except RunServiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(content=data, media_type=mime_type)

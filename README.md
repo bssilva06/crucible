@@ -2,7 +2,7 @@
 
 Crucible is an adversarial generate-and-certify gauntlet for AI media, built on Genblaze and Backblaze B2.
 
-This repository is currently at **Phase 1C: Brief-Aware Gemini Judge**. The pipeline can generate one asset, persist it to Backblaze B2, verify the manifest hash, run deterministic quality gates, and optionally run a Gemini vision judge against the prompt.
+This repository is currently at **Phase 2: Two-Provider Candidate Fan-Out**. The pipeline can generate candidate assets, persist them to Backblaze B2, verify manifest hashes, run deterministic quality gates, optionally run a Gemini vision judge, and select the best eligible candidate.
 
 ## Current Scope
 
@@ -17,6 +17,8 @@ Included:
 - Unit tests for config, object keys, hashing, and dry-run manifest verification.
 - Deterministic product-shot quality gates.
 - Optional Gemini brief-aware VLM judging.
+- Best-of-2 candidate fan-out across GMICloud and Replicate.
+- Candidate asset proxying and selected-winner projection.
 - FastAPI run endpoint and Next.js local app.
 
 Deferred:
@@ -113,6 +115,7 @@ Live tests are opt-in:
 ```powershell
 $env:CRUCIBLE_RUN_LIVE_PROVIDER_TESTS="true"
 $env:CRUCIBLE_RUN_LIVE_JUDGE_TESTS="true"
+$env:CRUCIBLE_RUN_LIVE_FANOUT_TESTS="true"
 pytest
 ```
 
@@ -133,6 +136,12 @@ Dry-run request:
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/runs -ContentType "application/json" -Body '{"prompt":"Centered product bottle on white background","dry_run":true}'
+```
+
+Fan-out request with an explicit candidate count:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/runs -ContentType "application/json" -Body '{"prompt":"Centered product bottle on white background","candidate_count":2}'
 ```
 
 ## Phase 0.5 Local Web App

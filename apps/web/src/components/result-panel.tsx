@@ -82,6 +82,26 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
         </div>
       ) : null}
 
+      {result?.candidates.length ? (
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Candidates</h3>
+            <span className="text-xs text-[var(--muted)]">{result.candidate_count} generated</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {result.candidates.map((candidate) => (
+              <CandidateCard
+                apiBaseUrl={apiBaseUrl}
+                candidate={candidate}
+                isSelected={candidate.attempt_id === result.selected_attempt_id}
+                runId={result.run_id}
+                key={candidate.attempt_id}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <CriterionSection title="Deterministic Gates" results={deterministicResults} />
       <CriterionSection
         title="AI Judge"
@@ -97,6 +117,58 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
         }
       />
     </section>
+  );
+}
+
+function CandidateCard({
+  apiBaseUrl,
+  runId,
+  candidate,
+  isSelected,
+}: {
+  apiBaseUrl: string;
+  runId: string;
+  candidate: RunResponse["candidates"][number];
+  isSelected: boolean;
+}) {
+  const assetUrl = candidate.asset
+    ? `${apiBaseUrl}/runs/${encodeURIComponent(runId)}/candidates/${encodeURIComponent(candidate.attempt_id)}/asset`
+    : null;
+  const score = candidate.verdict ? candidate.verdict.quality_score.toFixed(3) : "—";
+  return (
+    <div className="overflow-hidden rounded-md border border-[var(--border)] bg-[#fafaf8]">
+      <div className="flex aspect-square items-center justify-center border-b border-[var(--border)] bg-[#f1f1ed]">
+        {assetUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="h-full w-full object-contain" src={assetUrl} alt={`${candidate.attempt_id} asset`} />
+        ) : (
+          <div className="px-3 text-center text-xs text-[var(--muted)]">{candidate.error || "No asset"}</div>
+        )}
+      </div>
+      <div className="space-y-2 p-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="break-all font-mono">{candidate.attempt_id}</span>
+          <span
+            className={
+              isSelected
+                ? "rounded-md bg-teal-50 px-2 py-1 font-medium text-[var(--accent-strong)]"
+                : candidate.status === "FAILED" || candidate.status === "REJECTED"
+                  ? "rounded-md bg-red-50 px-2 py-1 font-medium text-[var(--danger)]"
+                  : "rounded-md bg-stone-100 px-2 py-1 font-medium text-[var(--muted)]"
+            }
+          >
+            {isSelected ? "SELECTED" : candidate.status}
+          </span>
+        </div>
+        <div className="grid gap-1 text-[var(--muted)]">
+          <span className="break-words">Provider {candidate.provider || "—"}</span>
+          <span className="break-words">Model {candidate.model || "—"}</span>
+          <span>Score {score}</span>
+          <span className="break-words">Failed gates {candidate.failed_hard_gates.join(", ") || "—"}</span>
+        </div>
+        {candidate.selection_reason ? <p className="leading-5">{candidate.selection_reason}</p> : null}
+      </div>
+    </div>
   );
 }
 

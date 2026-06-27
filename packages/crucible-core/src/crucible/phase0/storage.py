@@ -13,6 +13,13 @@ def object_key(run_id: str, filename: str, prefix: str = "runs/local") -> str:
     return f"{cleaned_prefix}/{run_id}/{cleaned_filename}"
 
 
+def candidate_object_key(run_id: str, attempt_id: str, filename: str, prefix: str = "runs/local") -> str:
+    cleaned_prefix = prefix.strip("/")
+    cleaned_filename = filename.strip("/")
+    cleaned_attempt_id = attempt_id.strip("/")
+    return f"{cleaned_prefix}/{run_id}/candidates/{cleaned_attempt_id}/{cleaned_filename}"
+
+
 @dataclass(frozen=True)
 class StoredObject:
     uri: str

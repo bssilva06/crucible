@@ -5,12 +5,12 @@ from pathlib import Path
 import pytest
 
 from crucible.phase0.brief import Brief
-from crucible.phase0.config import ConfigError, Phase0Settings
+from crucible.phase0.config import ConfigError, Phase0Settings, phase2_fanout_config, phase2_provider_configs
 from crucible.phase0.crypto import sha256_bytes
 from crucible.phase0.env import load_dotenv
 from crucible.phase0.generator import DryRunGenerator
 from crucible.phase0.spine import persist_generated_asset, verify_manifest
-from crucible.phase0.storage import LocalStorage, object_key
+from crucible.phase0.storage import LocalStorage, candidate_object_key, object_key
 
 
 def test_sha256_bytes_is_stable() -> None:
@@ -19,6 +19,27 @@ def test_sha256_bytes_is_stable() -> None:
 
 def test_object_key_uses_phase0_layout() -> None:
     assert object_key("run_123", "manifest.json") == "runs/local/run_123/manifest.json"
+
+
+def test_candidate_object_key_uses_phase2_layout() -> None:
+    assert (
+        candidate_object_key("run_123", "attempt_001", "asset.png")
+        == "runs/local/run_123/candidates/attempt_001/asset.png"
+    )
+
+
+def test_phase2_fanout_config_loads_defaults() -> None:
+    config = phase2_fanout_config(Path("configs"))
+
+    assert config["default_candidate_count"] == 2
+    assert config["max_candidate_count"] == 8
+    assert config["providers"] == ["gmicloud", "replicate"]
+
+
+def test_phase2_provider_configs_respect_requested_count() -> None:
+    configs = phase2_provider_configs(Path("configs"), candidate_count=3)
+
+    assert [config["provider"] for config in configs] == ["gmicloud", "replicate", "gmicloud"]
 
 
 def test_require_b2_reports_missing_env(monkeypatch: pytest.MonkeyPatch) -> None:

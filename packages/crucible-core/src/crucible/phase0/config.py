@@ -93,6 +93,43 @@ def phase0_provider_config(config_root: Path, provider: str) -> dict[str, Any]:
     return provider_config
 
 
+def phase2_fanout_config(config_root: Path) -> dict[str, Any]:
+    models = load_yaml(config_root / "models.yaml")
+    fanout = models.get("phase2", {}).get("fanout", {})
+    if not isinstance(fanout, dict):
+        raise ConfigError("Expected phase2.fanout mapping in configs/models.yaml")
+    providers = fanout.get("providers", [])
+    if not isinstance(providers, list) or not providers:
+        raise ConfigError("Expected at least one provider in phase2.fanout.providers")
+    return {
+        "default_candidate_count": int(fanout.get("default_candidate_count", 2)),
+        "max_candidate_count": int(fanout.get("max_candidate_count", 8)),
+        "providers": [str(provider) for provider in providers],
+    }
+
+
+def phase2_provider_configs(config_root: Path, candidate_count: int | None = None) -> list[dict[str, Any]]:
+    models = load_yaml(config_root / "models.yaml")
+    phase0_providers = models.get("phase0", {}).get("providers", {})
+    fanout = phase2_fanout_config(config_root)
+    requested = candidate_count or fanout["default_candidate_count"]
+    count = max(1, min(requested, fanout["max_candidate_count"]))
+
+    configs: list[dict[str, Any]] = []
+    for provider in fanout["providers"]:
+        provider_config = phase0_providers.get(provider)
+        if not isinstance(provider_config, dict):
+            raise ConfigError(f"Provider {provider!r} is not configured in configs/models.yaml")
+        if not provider_config.get("enabled", False):
+            raise ConfigError(f"Provider {provider!r} is configured but disabled")
+        configs.append({"provider": provider, **provider_config})
+
+    expanded: list[dict[str, Any]] = []
+    while len(expanded) < count:
+        expanded.extend(configs)
+    return expanded[:count]
+
+
 def _env_bool(name: str, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:

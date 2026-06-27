@@ -48,23 +48,29 @@ def test_create_and_fetch_dry_run(tmp_path: Path) -> None:
     assert created["verification_status"] == "verified"
     assert created["evaluation_status"] == "FAILED"
     assert created["judge_status"] == "SKIPPED"
+    assert created["candidate_count"] == 2
+    assert len(created["candidates"]) == 2
+    assert created["selected_attempt_id"] is None
+    assert created["asset_uri"] is None
     assert created["failed_hard_gates"] == ["minimum_resolution"]
     assert created["verdict"]["passed"] is False
     assert created["verdict"]["criterion_failures"] == ["minimum_resolution"]
-    assert "minimum_resolution" in created["verdict"]["feedback"]
-    assert len(created["criterion_results"]) == 4
-    assert created["provider"] == "dry-run"
+    assert "No eligible candidate" in created["verdict"]["feedback"]
+    assert created["criterion_results"] == []
+    assert created["provider"] is None
 
     fetched = client.get(f"/runs/{created['run_id']}")
     assert fetched.status_code == 200
     assert fetched.json()["run_id"] == created["run_id"]
 
 
-def test_asset_proxy_returns_image(tmp_path: Path) -> None:
+def test_asset_proxy_returns_image(tmp_path: Path, monkeypatch) -> None:
     reset_run_service_for_tests(_settings(tmp_path))
+    monkeypatch.setattr(run_service_module, "run_deterministic_checks", _passing_deterministic_checks)
+    monkeypatch.setattr(run_service_module, "build_judge", lambda _: FakeJudge())
     client = TestClient(app)
+    created = _create_passing_run(client)
 
-    created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
     asset = client.get(f"/runs/{created['run_id']}/asset")
 
     assert asset.status_code == 200
@@ -78,14 +84,14 @@ def test_dry_run_includes_deterministic_gate_results(tmp_path: Path) -> None:
 
     created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
 
-    criterion_ids = [result["criterion_id"] for result in created["criterion_results"]]
+    criterion_ids = [result["criterion_id"] for result in created["candidates"][0]["criterion_results"]]
     assert criterion_ids == [
         "file_integrity",
         "minimum_resolution",
         "aspect_ratio",
         "white_background_edges",
     ]
-    assert created["criterion_results"][0]["passed"] is True
+    assert created["candidates"][0]["criterion_results"][0]["passed"] is True
     assert "minimum_resolution" in created["failed_hard_gates"]
     assert created["judge_status"] == "SKIPPED"
 
@@ -99,8 +105,8 @@ def test_dry_run_verdict_preserves_completed_transport_status(tmp_path: Path) ->
     assert created["status"] == "COMPLETED"
     assert created["evaluation_status"] == "FAILED"
     assert created["verdict"]["passed"] is False
-    assert created["verdict"]["quality_score"] < 1.0
-    assert created["verdict"]["confidence"] == 1.0
+    assert created["verdict"]["quality_score"] == 0.0
+    assert created["verdict"]["confidence"] == 0.0
 
 
 def test_dry_run_with_passing_fake_judge_can_pass_evaluation(
@@ -123,6 +129,9 @@ def test_dry_run_with_passing_fake_judge_can_pass_evaluation(
     assert created["verdict"]["passed"] is True
     assert created["verdict"]["confidence"] == 0.8
     assert len(created["criterion_results"]) == 9
+    assert created["candidate_count"] == 2
+    assert created["selected_attempt_id"] == "attempt_001"
+    assert created["asset_uri"] == created["candidates"][0]["asset"]["uri"]
 
 
 def test_dry_run_with_failing_fake_judge_populates_failed_gate(
@@ -138,9 +147,10 @@ def test_dry_run_with_failing_fake_judge_populates_failed_gate(
 
     assert created["status"] == "COMPLETED"
     assert created["evaluation_status"] == "FAILED"
+    assert created["selected_attempt_id"] is None
     assert created["judge_status"] == "FAILED"
     assert created["failed_hard_gates"] == ["product_centered"]
-    assert "product_centered" in created["verdict"]["feedback"]
+    assert "No eligible candidate" in created["verdict"]["feedback"]
 
 
 def test_missing_gemini_credentials_skip_judge_without_leaking_env_names(
@@ -157,9 +167,52 @@ def test_missing_gemini_credentials_skip_judge_without_leaking_env_names(
 
     assert created["status"] == "COMPLETED"
     assert created["judge_status"] == "SKIPPED"
-    assert created["judge_error"] == "Gemini judge credentials are not configured."
+    assert created["selected_attempt_id"] is None
+    assert "ai_judge_available" in created["failed_hard_gates"]
     assert "GEMINI_API_KEY" not in str(created)
     assert "GOOGLE_API_KEY" not in str(created)
+
+
+def test_dry_run_best_of_two_selects_passing_candidate(tmp_path: Path, monkeypatch) -> None:
+    reset_run_service_for_tests(_settings(tmp_path))
+    monkeypatch.setattr(run_service_module, "run_deterministic_checks", _first_candidate_fails_second_passes)
+    monkeypatch.setattr(run_service_module, "build_judge", lambda _: FakeJudge())
+    client = TestClient(app)
+
+    created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
+
+    assert created["status"] == "COMPLETED"
+    assert created["selected_attempt_id"] == "attempt_002"
+    assert created["provider"] == "dry-run"
+    assert created["asset_uri"] == created["candidates"][1]["asset"]["uri"]
+    assert created["candidates"][0]["status"] == "REJECTED"
+    assert created["candidates"][1]["status"] == "ELIGIBLE"
+
+
+def test_candidate_asset_endpoint_returns_requested_candidate_image(tmp_path: Path, monkeypatch) -> None:
+    reset_run_service_for_tests(_settings(tmp_path))
+    monkeypatch.setattr(run_service_module, "run_deterministic_checks", _passing_deterministic_checks)
+    monkeypatch.setattr(run_service_module, "build_judge", lambda _: FakeJudge())
+    client = TestClient(app)
+
+    created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
+    asset = client.get(f"/runs/{created['run_id']}/candidates/attempt_002/asset")
+
+    assert asset.status_code == 200
+    assert asset.headers["content-type"].startswith("image/png")
+    assert asset.content.startswith(b"\x89PNG")
+
+
+def test_candidate_asset_endpoint_returns_rejected_candidate_image(tmp_path: Path) -> None:
+    reset_run_service_for_tests(_settings(tmp_path))
+    client = TestClient(app)
+
+    created = client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
+    asset = client.get(f"/runs/{created['run_id']}/candidates/attempt_001/asset")
+
+    assert created["selected_attempt_id"] is None
+    assert asset.status_code == 200
+    assert asset.headers["content-type"].startswith("image/png")
 
 
 def test_rejects_long_prompt(tmp_path: Path) -> None:
@@ -212,3 +265,22 @@ def _passing_deterministic_checks(**_: object) -> list[CriterionResult]:
             evaluator=EvaluatorKind.DETERMINISTIC,
         ),
     ]
+
+
+def _first_candidate_fails_second_passes(**kwargs: object) -> list[CriterionResult]:
+    asset_uri = str(kwargs.get("asset_uri", ""))
+    if "attempt_001" in asset_uri:
+        return [
+            CriterionResult(
+                criterion_id="minimum_resolution",
+                passed=False,
+                score=0.0,
+                hard_gate=True,
+                evaluator=EvaluatorKind.DETERMINISTIC,
+            )
+        ]
+    return _passing_deterministic_checks(**kwargs)
+
+
+def _create_passing_run(client: TestClient):
+    return client.post("/runs", json={"prompt": "Centered bottle on white", "dry_run": True}).json()
