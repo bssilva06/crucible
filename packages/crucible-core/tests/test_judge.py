@@ -17,6 +17,7 @@ RUBRIC_PATH = Path("configs/rubrics/ecommerce-product-shot.yaml")
 
 
 def test_judge_config_loads_defaults_and_masks_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("GOOGLE_API_KEY", "secret-value")
 
     config = load_judge_config(tmp_path / "missing.yaml")

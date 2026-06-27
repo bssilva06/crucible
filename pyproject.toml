@@ -36,4 +36,4 @@ where = ["packages/crucible-core/src"]
 [tool.pytest.ini_options]
 testpaths = ["packages/crucible-core/tests", "apps/api/tests"]
 pythonpath = ["packages/crucible-core/src", "apps/api/src"]
-addopts = "-q --basetemp=tmp/pytest -p no:cacheprovider"
+addopts = "-q -p no:cacheprovider"
