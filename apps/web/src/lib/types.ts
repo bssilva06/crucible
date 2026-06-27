@@ -13,6 +13,7 @@ export type RunResponse = {
   evaluation_status: "NOT_RUN" | "PASSED" | "FAILED";
   criterion_results: CriterionResult[];
   failed_hard_gates: string[];
+  verdict: RoundVerdict | null;
   error: string | null;
 };
 
@@ -31,4 +32,13 @@ export type RunCreateRequest = {
   prompt: string;
   dry_run?: boolean;
   brief_id?: string;
+};
+
+export type RoundVerdict = {
+  passed: boolean;
+  selected_attempt_id: string | null;
+  quality_score: number;
+  confidence: number;
+  feedback: string;
+  criterion_failures: string[];
 };

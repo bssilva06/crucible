@@ -52,6 +52,28 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
         </dl>
       ) : null}
 
+      {result?.verdict ? (
+        <div className="mt-4 rounded-md border border-[var(--border)] bg-[#fafaf8] p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Verdict</h3>
+            <span
+              className={
+                result.verdict.passed
+                  ? "rounded-md bg-teal-50 px-2 py-1 text-xs font-medium text-[var(--accent-strong)]"
+                  : "rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-[var(--danger)]"
+              }
+            >
+              {result.verdict.passed ? "Passed quality gates" : "Needs revision"}
+            </span>
+          </div>
+          <p className="text-sm leading-5">{result.verdict.feedback}</p>
+          <div className="mt-3 grid gap-2 text-xs text-[var(--muted)] sm:grid-cols-2">
+            <span>Quality score {result.verdict.quality_score.toFixed(3)}</span>
+            <span>Confidence {result.verdict.confidence.toFixed(3)}</span>
+          </div>
+        </div>
+      ) : null}
+
       {result?.criterion_results.length ? (
         <div className="mt-4">
           <h3 className="mb-2 text-sm font-semibold">Deterministic Gates</h3>

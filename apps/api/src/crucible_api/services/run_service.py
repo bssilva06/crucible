@@ -6,7 +6,14 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from crucible.checks.deterministic import run_deterministic_checks
-from crucible.domain.evaluation import CriterionResult, EvaluationStatus, evaluation_status, failed_hard_gates
+from crucible.domain.evaluation import (
+    CriterionResult,
+    EvaluationStatus,
+    RoundVerdict,
+    aggregate_round_verdict,
+    evaluation_status,
+    failed_hard_gates,
+)
 from crucible.domain.rubric import load_rubric
 from crucible.phase0.brief import Brief
 from crucible.phase0.config import ConfigError, Phase0Settings
@@ -38,6 +45,7 @@ class RunResponse(BaseModel):
     evaluation_status: EvaluationStatus = EvaluationStatus.NOT_RUN
     criterion_results: list[CriterionResult] = Field(default_factory=list)
     failed_hard_gates: list[str] = Field(default_factory=list)
+    verdict: RoundVerdict | None = None
     error: str | None = None
 
 
@@ -122,6 +130,7 @@ class RunService:
                 asset_sha256=result.asset_sha256,
                 rubric=rubric,
             )
+            verdict = aggregate_round_verdict(criterion_results, selected_attempt_id=run_id)
             completed = self._runs[run_id].model_copy(
                 update={
                     "status": "COMPLETED",
@@ -129,6 +138,7 @@ class RunService:
                     "evaluation_status": evaluation_status(criterion_results),
                     "criterion_results": criterion_results,
                     "failed_hard_gates": failed_hard_gates(criterion_results),
+                    "verdict": verdict,
                 }
             )
             self._runs[run_id] = completed
