@@ -3,6 +3,7 @@ from crucible.domain.candidate import AssetRef
 from crucible.domain.evaluation import (
     CriterionResult,
     EvaluationStatus,
+    JudgeStatus,
     RoundVerdict,
     aggregate_round_verdict,
     evaluation_status,
@@ -18,6 +19,7 @@ __all__ = [
     "CriterionType",
     "CrucibleModel",
     "EvaluationStatus",
+    "JudgeStatus",
     "EvaluatorKind",
     "RoundVerdict",
     "Rubric",

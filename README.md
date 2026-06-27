@@ -2,9 +2,9 @@
 
 Crucible is an adversarial generate-and-certify gauntlet for AI media, built on Genblaze and Backblaze B2.
 
-This repository is currently at **Phase 0: Spine**. The goal is to prove one generation path can create an asset, persist it to Backblaze B2, write a manifest, and verify the manifest hash against the stored asset.
+This repository is currently at **Phase 1C: Brief-Aware Gemini Judge**. The pipeline can generate one asset, persist it to Backblaze B2, verify the manifest hash, run deterministic quality gates, and optionally run a Gemini vision judge against the prompt.
 
-## Phase 0 Scope
+## Current Scope
 
 Included:
 
@@ -15,17 +15,17 @@ Included:
 - B2/S3-compatible storage adapter.
 - Local manifest writer and verifier.
 - Unit tests for config, object keys, hashing, and dry-run manifest verification.
+- Deterministic product-shot quality gates.
+- Optional Gemini brief-aware VLM judging.
+- FastAPI run endpoint and Next.js local app.
 
 Deferred:
 
 - Hallmark certification.
 - OCR.
-- VLM judging.
 - Pairwise ranking.
 - Refinement.
 - Parquet analytics.
-- FastAPI.
-- Next.js.
 
 ## Setup
 
@@ -39,6 +39,12 @@ For live Genblaze generation, also install the relevant Genblaze adapter package
 
 ```powershell
 python -m pip install -e ".[genblaze-gmicloud]"
+```
+
+For live Gemini judging, also install:
+
+```powershell
+python -m pip install -e ".[gemini-judge]"
 ```
 
 ## Environment
@@ -56,6 +62,10 @@ Required for live B2 upload:
 Required for default live generation:
 
 - `GMICLOUD_API_KEY`
+
+Required for live Gemini judging:
+
+- `GEMINI_API_KEY` or `GOOGLE_API_KEY`
 
 ## Dry Run
 
@@ -102,6 +112,7 @@ Live tests are opt-in:
 
 ```powershell
 $env:CRUCIBLE_RUN_LIVE_PROVIDER_TESTS="true"
+$env:CRUCIBLE_RUN_LIVE_JUDGE_TESTS="true"
 pytest
 ```
 

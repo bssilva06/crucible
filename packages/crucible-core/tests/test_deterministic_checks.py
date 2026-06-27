@@ -24,6 +24,11 @@ def test_rubric_loads() -> None:
         "minimum_resolution",
         "aspect_ratio",
         "white_background_edges",
+        "product_centered",
+        "product_fully_visible",
+        "no_text_or_logos",
+        "no_hands_people_or_props",
+        "matches_brief_intent",
     ]
 
 

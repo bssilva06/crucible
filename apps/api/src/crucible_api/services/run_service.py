@@ -9,12 +9,15 @@ from crucible.checks.deterministic import run_deterministic_checks
 from crucible.domain.evaluation import (
     CriterionResult,
     EvaluationStatus,
+    JudgeStatus,
     RoundVerdict,
     aggregate_round_verdict,
     evaluation_status,
     failed_hard_gates,
 )
-from crucible.domain.rubric import load_rubric
+from crucible.domain.rubric import CriterionType, load_rubric
+from crucible.judge.base import JudgeRunResult
+from crucible.judge.factory import build_judge
 from crucible.phase0.brief import Brief
 from crucible.phase0.config import ConfigError, Phase0Settings
 from crucible.phase0.generator import GeneratedAsset
@@ -46,6 +49,10 @@ class RunResponse(BaseModel):
     criterion_results: list[CriterionResult] = Field(default_factory=list)
     failed_hard_gates: list[str] = Field(default_factory=list)
     verdict: RoundVerdict | None = None
+    judge_status: JudgeStatus = JudgeStatus.NOT_RUN
+    judge_provider: str | None = None
+    judge_model: str | None = None
+    judge_error: str | None = None
     error: str | None = None
 
 
@@ -130,6 +137,15 @@ class RunService:
                 asset_sha256=result.asset_sha256,
                 rubric=rubric,
             )
+            judge_outcome = _judge_generated_asset(
+                config_root=self.settings.config_root,
+                prompt=prompt,
+                asset_bytes=asset_bytes,
+                mime_type=_mime_type_for_uri(result.asset_uri),
+                deterministic_results=criterion_results,
+                rubric=rubric,
+            )
+            criterion_results = [*criterion_results, *judge_outcome.results]
             verdict = aggregate_round_verdict(criterion_results, selected_attempt_id=run_id)
             completed = self._runs[run_id].model_copy(
                 update={
@@ -139,6 +155,10 @@ class RunService:
                     "criterion_results": criterion_results,
                     "failed_hard_gates": failed_hard_gates(criterion_results),
                     "verdict": verdict,
+                    "judge_status": judge_outcome.status,
+                    "judge_provider": judge_outcome.provider,
+                    "judge_model": judge_outcome.model,
+                    "judge_error": judge_outcome.error,
                 }
             )
             self._runs[run_id] = completed
@@ -202,9 +222,42 @@ def _mime_type_for_uri(uri: str) -> str:
     return "application/octet-stream"
 
 
+def _judge_generated_asset(
+    *,
+    config_root,
+    prompt: str,
+    asset_bytes: bytes,
+    mime_type: str,
+    deterministic_results: list[CriterionResult],
+    rubric,
+) -> JudgeRunResult:
+    if failed_hard_gates(deterministic_results):
+        return JudgeRunResult(
+            status=JudgeStatus.SKIPPED,
+            error="Skipped because deterministic hard gates failed.",
+        )
+
+    criteria = [criterion for criterion in rubric.criteria if criterion.type == CriterionType.VLM_BOOLEAN]
+    judge = build_judge(config_root)
+    return judge.evaluate(
+        prompt=prompt,
+        asset_bytes=asset_bytes,
+        mime_type=mime_type,
+        criteria=criteria,
+    )
+
+
 def _sanitize_error(exc: Exception) -> str:
     text = str(exc)
-    forbidden = ["GMI_API_KEY", "GMICLOUD_API_KEY", "B2_APPLICATION_KEY", "B2_APP_KEY", "REPLICATE_API_TOKEN"]
+    forbidden = [
+        "GMI_API_KEY",
+        "GMICLOUD_API_KEY",
+        "B2_APPLICATION_KEY",
+        "B2_APP_KEY",
+        "REPLICATE_API_TOKEN",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    ]
     for token in forbidden:
         text = text.replace(token, "<redacted-env>")
     return text

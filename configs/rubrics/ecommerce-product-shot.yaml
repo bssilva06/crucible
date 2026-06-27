@@ -35,3 +35,43 @@ criteria:
     expected:
       edge_pass_rate: 0.95
       rgb_tolerance: 18
+
+  - id: product_centered
+    description: The main product is centered in the frame.
+    type: vlm_boolean
+    weight: 1.0
+    hard_gate: true
+    evaluator: gemini-2.5-flash
+    expected: true
+
+  - id: product_fully_visible
+    description: The product is fully visible and not cropped by the image edges.
+    type: vlm_boolean
+    weight: 1.0
+    hard_gate: true
+    evaluator: gemini-2.5-flash
+    expected: true
+
+  - id: no_text_or_logos
+    description: The image contains no visible text, logos, labels, or watermarks.
+    type: vlm_boolean
+    weight: 1.0
+    hard_gate: true
+    evaluator: gemini-2.5-flash
+    expected: true
+
+  - id: no_hands_people_or_props
+    description: The image contains no hands, people, extra props, or distracting objects.
+    type: vlm_boolean
+    weight: 1.0
+    hard_gate: true
+    evaluator: gemini-2.5-flash
+    expected: true
+
+  - id: matches_brief_intent
+    description: The image matches the user's e-commerce product-shot brief.
+    type: vlm_boolean
+    weight: 1.0
+    hard_gate: true
+    evaluator: gemini-2.5-flash
+    expected: true

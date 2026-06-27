@@ -15,6 +15,14 @@ class EvaluationStatus(StrEnum):
     FAILED = "FAILED"
 
 
+class JudgeStatus(StrEnum):
+    NOT_RUN = "NOT_RUN"
+    SKIPPED = "SKIPPED"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    ERROR = "ERROR"
+
+
 class CriterionResult(CrucibleModel):
     criterion_id: str
     passed: bool
@@ -68,12 +76,13 @@ def aggregate_round_verdict(
 
     failures = failed_hard_gates(results)
     passed = not failures
+    has_judge_results = any(result.evaluator != EvaluatorKind.DETERMINISTIC for result in results)
     return RoundVerdict(
         passed=passed,
         selected_attempt_id=selected_attempt_id if passed else None,
         quality_score=_quality_score(results),
-        confidence=1.0,
-        feedback=_feedback(failures),
+        confidence=0.8 if has_judge_results else 1.0,
+        feedback=_feedback(results, failures),
         criterion_failures=failures,
     )
 
@@ -101,7 +110,30 @@ def _quality_score(results: list[CriterionResult]) -> float:
     return max(0.0, min(total / len(results), 1.0))
 
 
-def _feedback(failures: list[str]) -> str:
+def _feedback(results: list[CriterionResult], failures: list[str]) -> str:
+    deterministic_failures = [
+        result.criterion_id
+        for result in results
+        if result.evaluator == EvaluatorKind.DETERMINISTIC and result.hard_gate and not result.passed
+    ]
+    judge_failures = [
+        result.criterion_id
+        for result in results
+        if result.evaluator != EvaluatorKind.DETERMINISTIC and result.hard_gate and not result.passed
+    ]
+    has_judge_results = any(result.evaluator != EvaluatorKind.DETERMINISTIC for result in results)
+
+    if deterministic_failures and judge_failures:
+        return (
+            f"Failed deterministic hard gates: {', '.join(deterministic_failures)}. "
+            f"Failed judge hard gates: {', '.join(judge_failures)}."
+        )
+    if deterministic_failures:
+        return f"Failed deterministic hard gates: {', '.join(deterministic_failures)}."
+    if judge_failures:
+        return f"Deterministic hard gates passed. Failed judge hard gates: {', '.join(judge_failures)}."
+    if has_judge_results:
+        return "Deterministic and judge hard gates passed."
     if failures:
-        return f"Failed deterministic hard gates: {', '.join(failures)}."
+        return f"Failed hard gates: {', '.join(failures)}."
     return "All deterministic hard gates passed."

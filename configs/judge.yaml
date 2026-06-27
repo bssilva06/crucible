@@ -1,0 +1,5 @@
+enabled: true
+provider: gemini
+model: gemini-2.5-flash
+timeout_seconds: 30
+default_threshold: 0.7

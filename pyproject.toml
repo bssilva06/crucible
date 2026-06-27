@@ -26,6 +26,9 @@ genblaze-gmicloud = [
   "genblaze-gmicloud",
   "genblaze-replicate",
 ]
+gemini-judge = [
+  "google-genai>=1.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["packages/crucible-core/src"]

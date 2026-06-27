@@ -11,6 +11,10 @@ type ResultPanelProps = {
 export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPanelProps) {
   const assetUrl =
     result?.status === "COMPLETED" ? `${apiBaseUrl}/runs/${encodeURIComponent(result.run_id)}/asset` : null;
+  const deterministicResults =
+    result?.criterion_results.filter((criterion) => criterion.evaluator === "deterministic") ?? [];
+  const judgeResults =
+    result?.criterion_results.filter((criterion) => criterion.evaluator !== "deterministic") ?? [];
 
   return (
     <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-4">
@@ -42,12 +46,16 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
           <Meta label="Run" value={result.run_id} />
           <Meta label="Status" value={result.status} />
           <Meta label="Evaluation" value={result.evaluation_status} />
+          <Meta label="Judge" value={result.judge_status} />
           <Meta label="Provider" value={result.provider || ""} />
           <Meta label="Model" value={result.model || ""} />
           <Meta label="Verification" value={result.verification_status} />
+          <Meta label="Judge provider" value={result.judge_provider || ""} />
+          <Meta label="Judge model" value={result.judge_model || ""} />
           <Meta label="Failed gates" value={result.failed_hard_gates.join(", ")} wide />
           <Meta label="SHA-256" value={result.asset_sha256 || ""} wide />
           <Meta label="Manifest" value={result.manifest_uri || ""} wide />
+          {result.judge_error ? <Meta label="Judge note" value={result.judge_error} wide /> : null}
           {result.error ? <Meta label="Error" value={result.error} wide /> : null}
         </dl>
       ) : null}
@@ -74,39 +82,20 @@ export function ResultPanel({ apiBaseUrl, result, error, isLoading }: ResultPane
         </div>
       ) : null}
 
-      {result?.criterion_results.length ? (
-        <div className="mt-4">
-          <h3 className="mb-2 text-sm font-semibold">Deterministic Gates</h3>
-          <div className="overflow-hidden rounded-md border border-[var(--border)]">
-            {result.criterion_results.map((criterion) => (
-              <div
-                className="grid gap-2 border-b border-[var(--border)] bg-[#fafaf8] p-3 text-sm last:border-b-0 sm:grid-cols-[140px_80px_minmax(0,1fr)]"
-                key={criterion.criterion_id}
-              >
-                <div className="break-words font-mono text-xs">{criterion.criterion_id}</div>
-                <div>
-                  <span
-                    className={
-                      criterion.passed
-                        ? "rounded-md bg-teal-50 px-2 py-1 text-xs font-medium text-[var(--accent-strong)]"
-                        : "rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-[var(--danger)]"
-                    }
-                  >
-                    {criterion.passed ? "PASS" : "FAIL"}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm leading-5">{criterion.feedback || "No feedback"}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    Score {criterion.score === null ? "—" : criterion.score.toFixed(3)}
-                    {criterion.hard_gate ? " · hard gate" : ""}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <CriterionSection title="Deterministic Gates" results={deterministicResults} />
+      <CriterionSection
+        title="AI Judge"
+        results={judgeResults}
+        emptyText={
+          !result
+            ? undefined
+            : result.judge_status === "SKIPPED"
+            ? result.judge_error || "Judge skipped."
+            : result.judge_status === "ERROR"
+              ? result.judge_error || "Judge errored."
+              : "No judge results yet."
+        }
+      />
     </section>
   );
 }
@@ -150,6 +139,59 @@ function Meta({ label, value, wide = false }: { label: string; value: string; wi
       <dd className="break-words rounded-md border border-[var(--border)] bg-[#fafaf8] px-2 py-2 font-mono text-xs">
         {value || "—"}
       </dd>
+    </div>
+  );
+}
+
+function CriterionSection({
+  title,
+  results,
+  emptyText,
+}: {
+  title: string;
+  results: RunResponse["criterion_results"];
+  emptyText?: string;
+}) {
+  if (!results.length && !emptyText) {
+    return null;
+  }
+  return (
+    <div className="mt-4">
+      <h3 className="mb-2 text-sm font-semibold">{title}</h3>
+      {results.length ? (
+        <div className="overflow-hidden rounded-md border border-[var(--border)]">
+          {results.map((criterion) => (
+            <div
+              className="grid gap-2 border-b border-[var(--border)] bg-[#fafaf8] p-3 text-sm last:border-b-0 sm:grid-cols-[150px_80px_minmax(0,1fr)]"
+              key={criterion.criterion_id}
+            >
+              <div className="break-words font-mono text-xs">{criterion.criterion_id}</div>
+              <div>
+                <span
+                  className={
+                    criterion.passed
+                      ? "rounded-md bg-teal-50 px-2 py-1 text-xs font-medium text-[var(--accent-strong)]"
+                      : "rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-[var(--danger)]"
+                  }
+                >
+                  {criterion.passed ? "PASS" : "FAIL"}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm leading-5">{criterion.feedback || "No feedback"}</div>
+                <div className="mt-1 text-xs text-[var(--muted)]">
+                  Score {criterion.score === null ? "—" : criterion.score.toFixed(3)}
+                  {criterion.hard_gate ? " · hard gate" : ""}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-[var(--border)] bg-[#fafaf8] p-3 text-sm text-[var(--muted)]">
+          {emptyText}
+        </div>
+      )}
     </div>
   );
 }

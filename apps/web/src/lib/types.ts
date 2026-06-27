@@ -14,6 +14,10 @@ export type RunResponse = {
   criterion_results: CriterionResult[];
   failed_hard_gates: string[];
   verdict: RoundVerdict | null;
+  judge_status: "NOT_RUN" | "SKIPPED" | "PASSED" | "FAILED" | "ERROR";
+  judge_provider: string | null;
+  judge_model: string | null;
+  judge_error: string | null;
   error: string | null;
 };
 
